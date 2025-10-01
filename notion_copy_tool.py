@@ -16,7 +16,6 @@ st.set_page_config(
 
 # キャッシュディレクトリ
 CACHE_DIR = ".notion_cache"
-CONFIG_FILE = os.path.join(CACHE_DIR, "config.json")
 
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
@@ -30,36 +29,21 @@ if 'filter_options' not in st.session_state:
     st.session_state.filter_options = {'categories': [], 'db_tags': []}
 if 'select_all_checkbox' not in st.session_state:
     st.session_state.select_all_checkbox = False
-if 'notion_token' not in st.session_state:
-    st.session_state.notion_token = ""
-if 'database_id' not in st.session_state:
-    st.session_state.database_id = ""
 
-def save_config(token, db_id):
-    """設定を保存"""
-    config = {
-        'notion_token': token,
-        'database_id': db_id
-    }
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f)
+# Streamlit Secretsから読み込み（クラウド版用）
+def get_default_token():
+    """デフォルトのAPIトークンを取得"""
+    try:
+        return st.secrets.get("notion_token", "")
+    except:
+        return ""
 
-def load_config():
-    """設定を読み込み"""
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                config = json.load(f)
-            return config.get('notion_token', ''), config.get('database_id', '')
-        except:
-            return '', ''
-    return '', ''
-
-# 起動時に設定を読み込み
-if st.session_state.notion_token == "" and st.session_state.database_id == "":
-    loaded_token, loaded_db_id = load_config()
-    st.session_state.notion_token = loaded_token
-    st.session_state.database_id = loaded_db_id
+def get_default_database_id():
+    """デフォルトのデータベースIDを取得"""
+    try:
+        return st.secrets.get("database_id", "")
+    except:
+        return ""
 
 def init_page_checkboxes():
     """ページチェックボックスを初期化"""
@@ -412,24 +396,22 @@ st.markdown("---")
 with st.sidebar:
     st.header("⚙️ 設定")
     
+    # デフォルト値を取得
+    default_token = get_default_token()
+    default_db_id = get_default_database_id()
+    
     notion_token = st.text_input(
         "Notion API Token",
-        value=st.session_state.notion_token,
+        value=default_token,
         type="password",
         help="Notionインテグレーションのトークンを入力"
     )
     
     database_id = st.text_input(
         "データベースID",
-        value=st.session_state.database_id,
+        value=default_db_id,
         help="NotionデータベースのIDを入力"
     )
-    
-    if notion_token != st.session_state.notion_token or database_id != st.session_state.database_id:
-        st.session_state.notion_token = notion_token
-        st.session_state.database_id = database_id
-        if notion_token and database_id:
-            save_config(notion_token, database_id)
     
     if st.button("🔍 フィルタ設定を読み込み", use_container_width=True):
         if not notion_token or not database_id:
